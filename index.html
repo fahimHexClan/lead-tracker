@@ -297,7 +297,26 @@
       </div>
       <div class="field wide" id="mSourceOtherWrap" style="display:none;"><label for="mSourceOther">Custom source</label><input id="mSourceOther" placeholder="Type source"></div>
       <div class="field wide"><label for="mNext">Next follow-up</label><input type="date" id="mNext"></div>
-      <div class="field wide"><label for="mTags">Tags (comma separated)</label><input id="mTags" placeholder="Hot lead, Budget conscious"></div>
+      <div class="field wide">
+        <label for="mTagSelect">Tags</label>
+        <div style="display:flex; gap:8px;">
+          <select id="mTagSelect" style="flex:1;">
+            <option value="">Select a tag to add</option>
+            <option>Hot lead</option>
+            <option>Warm lead</option>
+            <option>Cold lead</option>
+            <option>Budget conscious</option>
+            <option>Ready to enroll</option>
+            <option>Needs follow-up</option>
+            <option>VIP</option>
+            <option>Not interested</option>
+            <option value="__custom__">+ Custom tag</option>
+          </select>
+          <button class="btn-ghost btn-sm" id="mTagAddBtn" type="button">Add</button>
+        </div>
+        <input id="mTagCustom" placeholder="Type custom tag" style="display:none; margin-top:6px;">
+        <div class="tag-row" id="mTagChips" style="margin-top:8px;"></div>
+      </div>
     </div>
     <div class="save-row"><button class="btn-ghost btn-sm" id="saveDetails">Save details</button></div>
     <div class="log-list" id="logList"></div>
@@ -429,6 +448,33 @@ function waLink(phone, name, status){
   return `https://wa.me/${num}?text=${msg}`;
 }
 
+/* ---------- Tag chip picker ---------- */
+let currentModalTags = [];
+function renderModalTagChips(){
+  const el = document.getElementById('mTagChips');
+  el.innerHTML = currentModalTags.length
+    ? currentModalTags.map((t,i)=>`<span class="tag-chip" style="cursor:pointer;" data-idx="${i}" title="Click to remove">${escapeHtml(t)} ✕</span>`).join('')
+    : '<span style="color:var(--sub); font-size:11.5px;">No tags yet</span>';
+  el.querySelectorAll('.tag-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      currentModalTags.splice(Number(chip.dataset.idx),1);
+      renderModalTagChips();
+    });
+  });
+}
+document.getElementById('mTagSelect').addEventListener('change', function(){
+  document.getElementById('mTagCustom').style.display = this.value === '__custom__' ? '' : 'none';
+});
+document.getElementById('mTagAddBtn').addEventListener('click', ()=>{
+  const sel = document.getElementById('mTagSelect').value;
+  const val = sel === '__custom__' ? document.getElementById('mTagCustom').value.trim() : sel;
+  if(val && !currentModalTags.includes(val)) currentModalTags.push(val);
+  document.getElementById('mTagSelect').value = '';
+  document.getElementById('mTagCustom').value = '';
+  document.getElementById('mTagCustom').style.display = 'none';
+  renderModalTagChips();
+});
+
 /* ---------- Source dropdown toggle ---------- */
 document.getElementById('fSource').addEventListener('change', function(){
   document.getElementById('fSourceOtherWrap').style.display = this.value === 'Other' ? '' : 'none';
@@ -502,8 +548,16 @@ function renderAnalytics(){
     bySource[src].total++;
     if(l.status==='enrolled') bySource[src].enrolled++;
   });
-  const entries = Object.entries(bySource).sort((a,b)=> b[1].total - a[1].total);
+  let entries = Object.entries(bySource).sort((a,b)=> b[1].total - a[1].total);
   if(!entries.length){ el.innerHTML = '<div style="color:var(--sub); font-size:12.5px;">No leads yet to analyze.</div>'; return; }
+  const TOP_N = 6;
+  if(entries.length > TOP_N){
+    const top = entries.slice(0, TOP_N);
+    const rest = entries.slice(TOP_N);
+    const restTotal = rest.reduce((s,[,d])=>s+d.total,0);
+    const restEnrolled = rest.reduce((s,[,d])=>s+d.enrolled,0);
+    entries = [...top, [`Other (${rest.length} more sources)`, {total:restTotal, enrolled:restEnrolled}]];
+  }
   const maxTotal = Math.max(...entries.map(e=>e[1].total));
   el.innerHTML = entries.map(([src, d])=>{
     const pct = maxTotal ? Math.round((d.total/maxTotal)*100) : 0;
@@ -722,7 +776,8 @@ function openLogModal(id){
   }
   document.getElementById('mStatus').value = lead.status || 'new';
   document.getElementById('mNext').value = lead.nextFollowUp || '';
-  document.getElementById('mTags').value = (lead.tags||[]).join(', ');
+  currentModalTags = (lead.tags||[]).slice();
+  renderModalTagChips();
   document.getElementById('logDate').value = todayIso();
   document.getElementById('logText').value = '';
   document.getElementById('modalWaLink').href = waLink(lead.phone, lead.name, lead.status);
@@ -739,7 +794,7 @@ document.getElementById('saveDetails').addEventListener('click', ()=>{
     : document.getElementById('mSource').value;
   lead.status = document.getElementById('mStatus').value;
   lead.nextFollowUp = document.getElementById('mNext').value || '';
-  lead.tags = document.getElementById('mTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  lead.tags = currentModalTags.slice();
   saveLead(lead);
   openLogModal(lead.id);
 });
