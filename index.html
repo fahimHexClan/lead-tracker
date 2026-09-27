@@ -150,6 +150,37 @@
   .src-bar-wrap{background:var(--bg); border-radius:6px; height:10px; overflow:hidden; border:1px solid var(--line);}
   .src-bar{background:var(--teal); height:100%; border-radius:6px;}
   .src-count{font-size:11.5px; color:var(--sub); text-align:right; white-space:nowrap;}
+
+  .toolbar-right{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .toolbar-right input{max-width:200px;}
+  .view-toggle{display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; flex-shrink:0;}
+  .view-toggle button{background:var(--bg); border:none; border-radius:0; color:var(--sub); font-size:12.5px; padding:7px 12px;}
+  .view-toggle button.active{background:var(--navy); color:#fff;}
+
+  .board-view{display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; align-items:flex-start;}
+  .board-col{background:var(--bg); border:1px solid var(--line); border-radius:10px; min-width:220px; max-width:220px; flex-shrink:0; display:flex; flex-direction:column; max-height:560px;}
+  .board-col-head{padding:10px 12px; font-size:12px; font-weight:700; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; color:var(--ink);}
+  .board-col-head span:last-child{color:var(--sub); font-weight:600;}
+  .board-col-body{padding:8px; display:flex; flex-direction:column; gap:8px; min-height:70px; overflow-y:auto; flex:1;}
+  .board-col-body.drag-over{background:var(--chip-new); outline:2px dashed var(--teal); outline-offset:-2px;}
+  .board-card{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:9px 10px; cursor:grab; font-size:12.5px;}
+  .board-card:hover{border-color:var(--teal);}
+  .board-card:active{cursor:grabbing;}
+  .board-card .bc-name{font-weight:600; margin-bottom:2px;}
+  .board-card .bc-phone{color:var(--sub); font-size:11.5px; margin-bottom:4px;}
+  .board-card .bc-source{color:var(--sub); font-size:11px; margin-bottom:4px;}
+  .board-empty-col{color:var(--sub); font-size:11.5px; padding:8px 4px;}
+
+  @media (max-width:640px){
+    #tableView table, #tableView thead, #tableView tbody, #tableView th, #tableView td, #tableView tr{ display:block; }
+    #tableView thead tr{ position:absolute; top:-9999px; left:-9999px; }
+    #tableView tbody tr{ background:var(--panel); border:1px solid var(--line); border-radius:10px; margin-bottom:10px; padding:10px 12px; }
+    #tableView tbody td{ border:none; padding:6px 0; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+    #tableView tbody td::before{ content:attr(data-label); font-size:11px; font-weight:600; color:var(--sub); flex-shrink:0; }
+    #tableView tbody td[data-label="Lead"]{ flex-direction:column; align-items:flex-start; }
+    #tableView tbody td[data-label="Lead"]::before{ display:none; }
+    #tableView tbody td[data-label="Actions"] .row-actions{ justify-content:flex-end; width:100%; }
+  }
 </style>
 </head>
 <body>
@@ -177,7 +208,19 @@
     <div class="form-grid">
       <div class="field"><label for="fName">Name</label><input id="fName" placeholder="Lead name"></div>
       <div class="field"><label for="fPhone">WhatsApp number</label><input id="fPhone" placeholder="+91 98765 43210"></div>
-      <div class="field"><label for="fSource">Source</label><input id="fSource" placeholder="Ad / Referral / Walk-in"></div>
+      <div class="field"><label for="fSource">Source</label>
+        <select id="fSource">
+          <option value="">Select source</option>
+          <option>Ad</option>
+          <option>Referral</option>
+          <option>Walk-in</option>
+          <option>Social Media</option>
+          <option>Website</option>
+          <option>WhatsApp</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field" id="fSourceOtherWrap" style="display:none;"><label for="fSourceOther">Custom source</label><input id="fSourceOther" placeholder="Type source"></div>
       <div class="field"><label for="fDate">Date added</label><input type="date" id="fDate"></div>
       <div class="field"><label for="fStatus">Status</label>
         <select id="fStatus">
@@ -196,9 +239,15 @@
   <div class="panel">
     <div class="toolbar">
       <div class="filters" id="filters"></div>
-      <input id="search" placeholder="Search name, phone or tag" style="max-width:220px;">
+      <div class="toolbar-right">
+        <div class="view-toggle" id="viewToggle">
+          <button data-view="table" class="active">📋 Table</button>
+          <button data-view="board">🗂 Board</button>
+        </div>
+        <input id="search" placeholder="Search name, phone or tag">
+      </div>
     </div>
-    <div class="table-scroll">
+    <div class="table-scroll" id="tableView">
       <table>
         <thead>
           <tr>
@@ -214,6 +263,7 @@
       </table>
       <div class="empty" id="emptyMsg" style="display:none;">No leads yet. Add your first lead above, or import a CSV.</div>
     </div>
+    <div class="board-view" id="boardView" hidden></div>
   </div>
 </div>
 
@@ -224,7 +274,18 @@
     <div class="detail-grid">
       <div class="field"><label for="mName">Name</label><input id="mName"></div>
       <div class="field"><label for="mPhone">WhatsApp number</label><input id="mPhone"></div>
-      <div class="field"><label for="mSource">Source</label><input id="mSource"></div>
+      <div class="field"><label for="mSource">Source</label>
+        <select id="mSource">
+          <option value="">Select source</option>
+          <option>Ad</option>
+          <option>Referral</option>
+          <option>Walk-in</option>
+          <option>Social Media</option>
+          <option>Website</option>
+          <option>WhatsApp</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
       <div class="field"><label for="mStatus">Status</label>
         <select id="mStatus">
           <option value="new">New</option>
@@ -234,6 +295,7 @@
           <option value="lost">Not enrolled</option>
         </select>
       </div>
+      <div class="field wide" id="mSourceOtherWrap" style="display:none;"><label for="mSourceOther">Custom source</label><input id="mSourceOther" placeholder="Type source"></div>
       <div class="field wide"><label for="mNext">Next follow-up</label><input type="date" id="mNext"></div>
       <div class="field wide"><label for="mTags">Tags (comma separated)</label><input id="mTags" placeholder="Hot lead, Budget conscious"></div>
     </div>
@@ -273,8 +335,10 @@ let activeFilter = 'all';
 let openLeadId = null;
 let sortKey = null;
 let sortDir = 1;
+let viewMode = 'table';
 let db = null;
 let leadsCollection = null;
+const SOURCE_OPTIONS = ['Ad','Referral','Walk-in','Social Media','Website','WhatsApp'];
 
 // ⚠️ PASTE YOUR FIREBASE CONFIG HERE (from Firebase console → Project settings → Your apps)
 const firebaseConfig = {
@@ -363,6 +427,28 @@ function waLink(phone, name, status){
   const templateFn = STATUS_TEMPLATES[status] || STATUS_TEMPLATES.new;
   const msg = encodeURIComponent(templateFn(name || ''));
   return `https://wa.me/${num}?text=${msg}`;
+}
+
+/* ---------- Source dropdown toggle ---------- */
+document.getElementById('fSource').addEventListener('change', function(){
+  document.getElementById('fSourceOtherWrap').style.display = this.value === 'Other' ? '' : 'none';
+});
+document.getElementById('mSource').addEventListener('change', function(){
+  document.getElementById('mSourceOtherWrap').style.display = this.value === 'Other' ? '' : 'none';
+});
+
+/* ---------- View toggle (Table / Board) ---------- */
+document.getElementById('viewToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-view]');
+  if(!btn) return;
+  viewMode = btn.dataset.view;
+  document.querySelectorAll('#viewToggle button').forEach(b=> b.classList.toggle('active', b.dataset.view===viewMode));
+  document.getElementById('tableView').hidden = viewMode !== 'table';
+  document.getElementById('boardView').hidden = viewMode !== 'board';
+  renderLeadsArea();
+});
+function renderLeadsArea(){
+  if(viewMode === 'board') renderBoard(); else renderTable();
 }
 
 /* ---------- Theme ---------- */
@@ -500,16 +586,16 @@ function renderTable(){
       ? `<div class="tag-row">${l.tags.map(t=>`<span class="tag-chip">${escapeHtml(t)}</span>`).join('')}</div>` : '';
     return `
     <tr data-id="${l.id}">
-      <td><div class="lead-name">${escapeHtml(l.name)}</div><div class="lead-phone">${escapeHtml(l.phone)}</div>${tagsHtml}</td>
-      <td>${escapeHtml(l.source)||'—'}</td>
-      <td>
+      <td data-label="Lead"><div class="lead-name">${escapeHtml(l.name)}</div><div class="lead-phone">${escapeHtml(l.phone)}</div>${tagsHtml}</td>
+      <td data-label="Source">${escapeHtml(l.source)||'—'}</td>
+      <td data-label="Status">
         <select class="status-select" data-id="${l.id}">
           ${Object.entries(STATUS_META).map(([k,v])=>`<option value="${k}" ${k===l.status?'selected':''}>${v.label}</option>`).join('')}
         </select>
       </td>
-      <td>${followUpBadge(l)}</td>
-      <td class="update-cell">${latestUpdateHtml(l)}</td>
-      <td>
+      <td data-label="Follow-up">${followUpBadge(l)}</td>
+      <td data-label="Latest update" class="update-cell">${latestUpdateHtml(l)}</td>
+      <td data-label="Actions">
         <div class="row-actions">
           <a class="btn-wa" style="text-decoration:none; display:inline-block;" href="${waLink(l.phone,l.name,l.status)}" target="_blank" rel="noopener">WhatsApp</a>
           <button class="btn-log" data-log="${l.id}">Open</button>
@@ -562,6 +648,57 @@ function formatDate(iso){
   return isNaN(d) ? iso : d.toLocaleDateString();
 }
 
+/* ---------- Board (Kanban) view ---------- */
+function renderBoard(){
+  const el = document.getElementById('boardView');
+  const searchVal = document.getElementById('search').value.trim().toLowerCase();
+  let filtered = leads.slice();
+  if(searchVal) filtered = filtered.filter(l =>
+    (l.name||'').toLowerCase().includes(searchVal) ||
+    (l.phone||'').includes(searchVal) ||
+    (l.tags||[]).some(t => t.toLowerCase().includes(searchVal))
+  );
+
+  el.innerHTML = Object.entries(STATUS_META).map(([key, meta])=>{
+    const items = filtered.filter(l=>l.status===key).sort((a,b)=> followUpRank(a)-followUpRank(b) || b.createdAt-a.createdAt);
+    const cards = items.map(l => `
+      <div class="board-card" draggable="true" data-id="${l.id}">
+        <div class="bc-name">${escapeHtml(l.name)}</div>
+        <div class="bc-phone">${escapeHtml(l.phone)}</div>
+        ${l.source ? `<div class="bc-source">${escapeHtml(l.source)}</div>` : ''}
+        ${followUpBadge(l)}
+      </div>`).join('');
+    return `
+      <div class="board-col">
+        <div class="board-col-head"><span>${meta.label}</span><span>${items.length}</span></div>
+        <div class="board-col-body" data-status="${key}">${cards || '<div class="board-empty-col">No leads</div>'}</div>
+      </div>`;
+  }).join('');
+
+  el.querySelectorAll('.board-card').forEach(card=>{
+    card.addEventListener('dragstart', (e)=>{
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('click', ()=> openLogModal(card.dataset.id));
+  });
+  el.querySelectorAll('.board-col-body').forEach(col=>{
+    col.addEventListener('dragover', (e)=>{ e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', ()=> col.classList.remove('drag-over'));
+    col.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const lead = leads.find(x=>x.id===id);
+      const newStatus = col.dataset.status;
+      if(lead && lead.status !== newStatus){
+        lead.status = newStatus;
+        saveLead(lead);
+      }
+    });
+  });
+}
+
 /* ---------- Modal ---------- */
 function openLogModal(id){
   openLeadId = id;
@@ -570,7 +707,19 @@ function openLogModal(id){
   document.getElementById('modalName').textContent = lead.name || 'Lead details';
   document.getElementById('mName').value = lead.name || '';
   document.getElementById('mPhone').value = lead.phone || '';
-  document.getElementById('mSource').value = lead.source || '';
+  if(SOURCE_OPTIONS.includes(lead.source)){
+    document.getElementById('mSource').value = lead.source;
+    document.getElementById('mSourceOtherWrap').style.display = 'none';
+    document.getElementById('mSourceOther').value = '';
+  } else if(lead.source){
+    document.getElementById('mSource').value = 'Other';
+    document.getElementById('mSourceOtherWrap').style.display = '';
+    document.getElementById('mSourceOther').value = lead.source;
+  } else {
+    document.getElementById('mSource').value = '';
+    document.getElementById('mSourceOtherWrap').style.display = 'none';
+    document.getElementById('mSourceOther').value = '';
+  }
   document.getElementById('mStatus').value = lead.status || 'new';
   document.getElementById('mNext').value = lead.nextFollowUp || '';
   document.getElementById('mTags').value = (lead.tags||[]).join(', ');
@@ -585,7 +734,9 @@ document.getElementById('saveDetails').addEventListener('click', ()=>{
   if(!lead) return;
   lead.name = document.getElementById('mName').value.trim() || lead.name;
   lead.phone = document.getElementById('mPhone').value.trim() || lead.phone;
-  lead.source = document.getElementById('mSource').value.trim();
+  lead.source = document.getElementById('mSource').value === 'Other'
+    ? document.getElementById('mSourceOther').value.trim()
+    : document.getElementById('mSource').value;
   lead.status = document.getElementById('mStatus').value;
   lead.nextFollowUp = document.getElementById('mNext').value || '';
   lead.tags = document.getElementById('mTags').value.split(',').map(t=>t.trim()).filter(Boolean);
@@ -627,13 +778,14 @@ function escapeHtml(s){
   return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function renderAll(){ renderStats(); renderReminder(); renderAnalytics(); renderFilters(); renderTable(); }
+function renderAll(){ renderStats(); renderReminder(); renderAnalytics(); renderFilters(); renderLeadsArea(); }
 
 /* ---------- Add lead (with duplicate detection) ---------- */
 document.getElementById('addBtn').addEventListener('click', ()=>{
   const name = document.getElementById('fName').value.trim();
   const phone = document.getElementById('fPhone').value.trim();
-  const source = document.getElementById('fSource').value.trim();
+  const sourceSel = document.getElementById('fSource').value;
+  const source = sourceSel === 'Other' ? document.getElementById('fSourceOther').value.trim() : sourceSel;
   const status = document.getElementById('fStatus').value;
   const dateVal = document.getElementById('fDate').value;
   const nextVal = document.getElementById('fNext').value;
@@ -651,13 +803,15 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
   document.getElementById('fName').value='';
   document.getElementById('fPhone').value='';
   document.getElementById('fSource').value='';
+  document.getElementById('fSourceOther').value='';
+  document.getElementById('fSourceOtherWrap').style.display='none';
   document.getElementById('fDate').value='';
   document.getElementById('fNext').value='';
   document.getElementById('fStatus').value='new';
   renderAll();
 });
 
-document.getElementById('search').addEventListener('input', renderTable);
+document.getElementById('search').addEventListener('input', renderLeadsArea);
 
 /* ---------- Export / Import ---------- */
 document.getElementById('exportBtn').addEventListener('click', ()=>{
